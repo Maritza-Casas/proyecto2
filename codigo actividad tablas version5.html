@@ -1,0 +1,204 @@
+<!-- 
+🌟 Aventura de Multiplicaciones - Versión con música y sonidos funcionales
+Guarda como .html y abre con doble clic
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Multiplicaciones Aventura 🧠</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #fceabb, #f8b500);
+    }
+    .bounce {
+      animation: bounce 0.6s;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center space-y-4 relative">
+    <img id="characterImg" src="https://openmoji.org/data/color/svg/1F916.svg" alt="Personaje" class="w-20 mx-auto bounce">
+
+    <h1 class="text-3xl font-bold text-pink-600">🎮 ¡Multiplicaciones Aventura!</h1>
+    
+    <div id="level" class="text-lg font-bold text-purple-600">Nivel: 1</div>
+    <div id="timer" class="text-lg font-bold text-red-600">⏱️ Tiempo: 60s</div>
+    <div id="problem" class="text-4xl font-bold text-blue-600">3 × 4 = ?</div>
+
+    <input id="answer" type="number" class="text-2xl w-24 mx-auto text-center border-2 border-blue-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="¿?" />
+
+    <button onclick="checkAnswer()" id="checkBtn" class="bg-green-400 hover:bg-green-500 text-white text-xl px-4 py-2 rounded-full transition duration-300">Comprobar ✅</button>
+
+    <div id="feedback" class="text-xl font-semibold h-10 flex flex-col items-center justify-center space-y-1">
+      <img id="resultImage" class="w-16 h-16 hidden" />
+      <span id="feedbackText"></span>
+    </div>
+
+    <div class="flex justify-around text-lg font-bold">
+      <div class="text-green-700">✅ Aciertos: <span id="score">0</span></div>
+      <div class="text-red-700">❌ Errores: <span id="mistakes">0</span></div>
+    </div>
+
+    <div class="flex justify-center gap-4 mt-2">
+      <button onclick="resetGame()" class="bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-2 rounded-full text-sm">🔁 Reiniciar</button>
+      <button onclick="toggleMusic()" id="musicBtn" class="bg-purple-400 hover:bg-purple-500 text-white px-4 py-2 rounded-full text-sm">🔊 Música</button>
+    </div>
+  </div>
+
+  <!-- Audios -->
+  <audio id="correctSound" src="https://cdn.pixabay.com/download/audio/2021/08/08/audio_c30fa5f2dc.mp3?filename=correct-2-46134.mp3" preload="auto"></audio>
+  <audio id="wrongSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_19739b6f7d.mp3?filename=wrong-2-43870.mp3" preload="auto"></audio>
+  <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2023/03/09/audio_392f93b86d.mp3?filename=joyful-ride-141038.mp3" loop preload="auto"></audio>
+
+  <script>
+    const problem = document.getElementById("problem");
+    const answerInput = document.getElementById("answer");
+    const feedback = document.getElementById("feedbackText");
+    const feedbackImage = document.getElementById("resultImage");
+    const scoreDisplay = document.getElementById("score");
+    const mistakesDisplay = document.getElementById("mistakes");
+    const levelDisplay = document.getElementById("level");
+    const timerDisplay = document.getElementById("timer");
+    const characterImg = document.getElementById("characterImg");
+    const correctSound = document.getElementById("correctSound");
+    const wrongSound = document.getElementById("wrongSound");
+    const bgMusic = document.getElementById("bgMusic");
+    const musicBtn = document.getElementById("musicBtn");
+    const checkBtn = document.getElementById("checkBtn");
+
+    let num1, num2;
+    let score = 0, mistakes = 0, level = 1;
+    let maxNumber = 9;
+    let musicOn = true;
+    let timeLeft = 60;
+    let timerInterval;
+    let userHasInteracted = false;
+
+    const charactersByLevel = {
+      1: "https://openmoji.org/data/color/svg/1F916.svg",
+      2: "https://openmoji.org/data/color/svg/1F47E.svg",
+      3: "https://openmoji.org/data/color/svg/1F984.svg",
+      4: "https://openmoji.org/data/color/svg/1F9D9.svg",
+      5: "https://openmoji.org/data/color/svg/1F9DF.svg"
+    };
+
+    function generateProblem() {
+      num1 = Math.floor(Math.random() * maxNumber) + 1;
+      num2 = Math.floor(Math.random() * maxNumber) + 1;
+      problem.textContent = `${num1} × ${num2} = ?`;
+      answerInput.value = "";
+      feedback.textContent = "";
+      feedbackImage.classList.add("hidden");
+    }
+
+    function startAudioIfNeeded() {
+      if (!userHasInteracted) {
+        bgMusic.volume = 0.3;
+        bgMusic.play().catch(() => {
+          console.log("Esperando interacción del usuario para iniciar música");
+        });
+        userHasInteracted = true;
+      }
+    }
+
+    function checkAnswer() {
+      startAudioIfNeeded();
+      if (timeLeft <= 0) return;
+      const userAnswer = parseInt(answerInput.value);
+      const correctAnswer = num1 * num2;
+
+      if (userAnswer === correctAnswer) {
+        score++;
+        feedback.textContent = "¡Excelente! 🎉";
+        feedback.className = "text-green-600 bounce";
+        feedbackImage.src = "https://openmoji.org/data/color/svg/1F973.svg";
+        feedbackImage.classList.remove("hidden");
+        correctSound.currentTime = 0;
+        correctSound.play();
+        updateLevel();
+      } else {
+        mistakes++;
+        feedback.textContent = "¡No te rindas! 💪";
+        feedback.className = "text-red-600 bounce";
+        feedbackImage.src = "https://openmoji.org/data/color/svg/1F609.svg";
+        feedbackImage.classList.remove("hidden");
+        wrongSound.currentTime = 0;
+        wrongSound.play();
+      }
+
+      scoreDisplay.textContent = score;
+      mistakesDisplay.textContent = mistakes;
+      setTimeout(generateProblem, 1200);
+    }
+
+    function updateLevel() {
+      const newLevel = Math.floor(score / 5) + 1;
+      if (newLevel !== level) {
+        level = newLevel;
+        levelDisplay.textContent = `Nivel: ${level}`;
+        maxNumber = 9 + level * 5;
+        if (charactersByLevel[level]) {
+          characterImg.src = charactersByLevel[level];
+        }
+      }
+    }
+
+    function toggleMusic() {
+      startAudioIfNeeded();
+      if (musicOn) {
+        bgMusic.pause();
+        musicBtn.textContent = "🔇 Música";
+      } else {
+        bgMusic.play();
+        musicBtn.textContent = "🔊 Música";
+      }
+      musicOn = !musicOn;
+    }
+
+    function startTimer() {
+      timeLeft = 60;
+      timerDisplay.textContent = `⏱️ Tiempo: ${timeLeft}s`;
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `⏱️ Tiempo: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          timerDisplay.textContent = "⏰ ¡Tiempo terminado!";
+          checkBtn.disabled = true;
+          answerInput.disabled = true;
+          feedback.textContent = "⏳ ¡Buen trabajo! Reinicia para seguir jugando.";
+        }
+      }, 1000);
+    }
+
+    function resetGame() {
+      startAudioIfNeeded();
+      score = 0;
+      mistakes = 0;
+      level = 1;
+      maxNumber = 9;
+      timeLeft = 60;
+      clearInterval(timerInterval);
+      scoreDisplay.textContent = "0";
+      mistakesDisplay.textContent = "0";
+      levelDisplay.textContent = "Nivel: 1";
+      characterImg.src = charactersByLevel[1];
+      checkBtn.disabled = false;
+      answerInput.disabled = false;
+      generateProblem();
+      startTimer();
+    }
+
+    // Inicia juego
+    generateProblem();
+    startTimer();
+  </script>
+</body>
+</html>
